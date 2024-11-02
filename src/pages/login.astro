@@ -1,0 +1,43 @@
+---
+import Layout from "./_layout.astro";
+import { getSession, setSessionCookie } from "../lib/session";
+import { getDb } from "../lib/db";
+import { users } from "../lib/schema";
+
+const session = await getSession(Astro.cookies);
+if (session) {
+  return Astro.redirect("/");
+}
+
+if (Astro.request.method === "POST") {
+  const formdata = await Astro.request.formData();
+  const username = formdata.get("username")?.toString();
+  if (!username) {
+    return new Response("Missing username", { status: 400 });
+  }
+
+  await Promise.all([
+    setSessionCookie(Astro.cookies, { username }),
+    getDb().insert(users).values({ username }).onConflictDoNothing(),
+  ]);
+
+  return Astro.redirect("/");
+}
+---
+
+<Layout username={undefined}>
+  <section>
+    <div>
+      <h1>Login / Sign Up</h1>
+
+      <form method="post" action="/login">
+        <label>
+          Username
+          <input type="text" id="username" name="username" required />
+        </label>
+
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+  </section>
+</Layout>

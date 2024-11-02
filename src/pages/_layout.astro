@@ -1,0 +1,84 @@
+---
+import "milligram/dist/milligram.min.css";
+
+type Props = {
+  username: string | undefined;
+};
+
+const { username } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>FeedMe</title>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <h1><a href="/">FeedMe</a></h1>
+        {
+          username ? (
+            <a href="/logout">Log out</a>
+          ) : (
+            <a href="/login">Login / signup</a>
+          )
+        }
+      </nav>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style>
+  :root {
+    --max-width: 800px;
+    --header-height: 80px;
+  }
+
+  body {
+    margin: 0;
+  }
+
+  header {
+    background: #f4f5f6;
+    border-bottom: 0.1rem solid #d1d1d1;
+  }
+
+  nav {
+    max-width: var(--max-width);
+    height: var(--header-height);
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  nav * {
+    margin: 0;
+    padding: 0;
+  }
+</style>
+
+<style is:global>
+  section > div {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  section {
+    padding-top: 4rem;
+  }
+
+  section:last-of-type {
+    padding-bottom: 4rem;
+  }
+</style>

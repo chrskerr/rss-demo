@@ -1,0 +1,12 @@
+---
+import Layout from "./_layout.astro";
+import { getSession } from "../lib/session";
+import LoggedInHome from "../views/logged_in_home.astro";
+import LoggedOutHome from "../views/logged_out_home.astro";
+
+const session = await getSession(Astro.cookies);
+---
+
+<Layout username={session?.username}>
+  {session ? <LoggedInHome username={session.username} /> : <LoggedOutHome />}
+</Layout>

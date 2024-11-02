@@ -1,0 +1,56 @@
+---
+import { eq } from "drizzle-orm";
+import { getDb } from "../lib/db";
+import { feedsTable, subscriptions } from "../lib/schema";
+
+type Props = {
+  username: string;
+};
+
+const { username } = Astro.props;
+
+const usersFeeds = await getDb()
+  .select({ id: feedsTable.id, name: feedsTable.name })
+  .from(feedsTable)
+  .leftJoin(subscriptions, eq(subscriptions.feed_id, feedsTable.id))
+  .where(eq(subscriptions.username, username));
+---
+
+<section>
+  <div>
+    <div>
+      <h2>Hello {username}!</h2>
+
+      <p>Feeds:</p>
+
+      {
+        usersFeeds.length > 0 ? (
+          <div class="feeds">
+            {usersFeeds.map((feed) => (
+              <>
+                <a href={`/feeds/${feed.id}`}>{feed.name}</a>
+                <a
+                  href={`/feeds/${feed.id}/unsubscribe`}
+                  class="button button-outline"
+                >
+                  Unsubscribe
+                </a>
+              </>
+            ))}
+          </div>
+        ) : (
+          <p>none</p>
+        )
+      }
+
+      <a href="/add" class="button">+ Add feed</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .feeds {
+    display: grid;
+    grid-template-columns: 1fr auto;
+  }
+</style>

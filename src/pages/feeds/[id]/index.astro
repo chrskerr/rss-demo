@@ -1,0 +1,143 @@
+---
+import { eq } from "drizzle-orm";
+import { getDb } from "../../../lib/db";
+import { feedsTable } from "../../../lib/schema";
+import { getSession } from "../../../lib/session";
+import Layout from "../../_layout.astro";
+import * as cheerio from "cheerio";
+import { feedParser } from "../../../lib/parse/parse";
+import { z } from "zod";
+
+const session = await getSession(Astro.cookies);
+
+const { id } = Astro.params;
+if (id == null) {
+  return new Response(null, { status: 404 });
+}
+
+const feed = (
+  await getDb().select().from(feedsTable).where(eq(feedsTable.id, id)).limit(1)
+)[0];
+if (feed == null) {
+  return new Response(null, { status: 404 });
+}
+
+let articles: z.infer<typeof feedParser> = [];
+if (feed.content != null) {
+  const feedData = feedParser.safeParse(JSON.parse(feed.content));
+  if (!feedData.success) {
+    return new Response(null, { status: 404 });
+  }
+
+  articles = feedData.data;
+} else {
+  const res = await fetch(feed.url);
+  feed.content = await res.text();
+
+  const $ = cheerio.load(feed.content, { xml: true });
+
+  // Check if it's an Atom feed by looking for the namespace
+  const isAtom = $("feed").length > 0;
+
+  if (isAtom) {
+    // Parse Atom feed
+    $("entry").each((_i, element) => {
+      const title = $(element).find("title").text();
+      // Look for the primary link - usually rel="alternate" or no rel specified
+      const url =
+        $(element).find('link[rel="alternate"]').attr("href") ||
+        $(element).find("link:not([rel])").attr("href") ||
+        $(element).find("link").first().attr("href");
+
+      // Atom feeds can have both published and updated dates
+      // published is the original publication date, updated is the last modification
+      const published_at =
+        $(element).find("published").text() ||
+        $(element).find("updated").text(); // fallback to updated if published isn't available
+
+      if (title && url && published_at) {
+        articles.push({
+          title,
+          url,
+          published_at: new Date(published_at).toLocaleString(),
+        });
+      }
+    });
+  } else {
+    // Parse RSS feed
+    $("item").each((_i, element) => {
+      const title = $(element).find("title").text();
+      const url = $(element).find("link").text();
+      const published_at = $(element).find("pubDate").text();
+
+      if (title && url && published_at) {
+        articles.push({
+          title,
+          url,
+          published_at: new Date(published_at).toLocaleString(),
+        });
+      }
+    });
+  }
+
+  await getDb()
+    .update(feedsTable)
+    .set({ content: JSON.stringify(articles) })
+    .where(eq(feedsTable.id, id));
+}
+---
+
+<Layout username={session?.username}>
+  <section>
+    <div>
+      <h2>{feed?.name}</h2>
+      <h3>Articles:</h3>
+      <div class="articles">
+        {
+          articles.map(({ title, url, published_at }) => (
+            <a href={url} target="_blank" rel="noreferrer nofollow external">
+              <article>
+                <h4>{title}</h4>
+                <small>{published_at}</small>
+              </article>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .articles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+
+  @media screen and (max-width: 600px) {
+    .articles {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  article {
+    padding: 2rem;
+    border: 0.1rem solid #d1d1d1;
+    border-radius: 4px;
+    transition: background linear 100ms;
+    height: 100%;
+  }
+
+  article:hover {
+    background: #fafafa;
+  }
+
+  article h4 {
+    margin-bottom: 1rem;
+  }
+
+  article small {
+    display: block;
+  }
+</style>

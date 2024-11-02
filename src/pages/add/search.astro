@@ -1,0 +1,17 @@
+---
+import Layout from "../_layout.astro";
+import { getSession } from "../../lib/session";
+
+const session = await getSession(Astro.cookies);
+if (!session) {
+  return Astro.redirect("/");
+}
+---
+
+<Layout username={session.username}>
+  <section>
+    <div>
+      <h2>Add new feed</h2>
+    </div>
+  </section>
+</Layout>

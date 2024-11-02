@@ -1,0 +1,96 @@
+---
+import Layout from "../_layout.astro";
+import { getSession } from "../../lib/session";
+import {
+  loadHtml,
+  tryDiscoverFeeds,
+  tryFindFeedInHtml,
+} from "../../lib/parse/parse";
+import { getDb } from "../../lib/db";
+import { feedsTable } from "../../lib/schema";
+
+const session = await getSession(Astro.cookies);
+if (!session) {
+  return Astro.redirect("/");
+}
+
+let feeds: { href: string; name: string; content?: string }[] | undefined;
+
+post: if (Astro.request.method === "POST") {
+  const formdata = await Astro.request.formData();
+  const url = formdata.get("url")?.toString();
+  if (!url) {
+    return new Response("Missing url", { status: 400 });
+  }
+
+  const $ = await loadHtml(url);
+  if (!$) {
+    feeds = [];
+    break post;
+  }
+
+  feeds = tryDiscoverFeeds($, url);
+
+  if (feeds.length === 0) {
+    feeds = await tryFindFeedInHtml($, url);
+  }
+
+  if (feeds.length > 0) {
+    const insertValues: (typeof feedsTable.$inferInsert)[] = feeds.map(
+      ({ href, name, content }) => ({
+        url: href,
+        name,
+        content: content ?? null,
+      })
+    );
+
+    await getDb().insert(feedsTable).values(insertValues).onConflictDoNothing();
+  }
+}
+---
+
+<Layout username={session.username}>
+  <section>
+    <div>
+      <h2>Add new feed</h2>
+      {
+        (feeds == null || feeds.length === 0) && (
+          <form method="post" action="/add">
+            <label>
+              Feed url
+              <input type="url" id="url" name="url" required />
+            </label>
+
+            <button type="submit">Add</button>
+          </form>
+        )
+      }
+      {
+        feeds != null && feeds.length > 0 && (
+          <>
+            <p>
+              Discovered feeds. Check those which you would like to subscribe to
+            </p>
+            <form method="post" action="/subscribe">
+              {feeds.map(({ href, name }) => (
+                <label>
+                  <input type="checkbox" checked id={href} name={href} />
+                  {name}
+                </label>
+              ))}
+
+              <button type="submit">Add</button>
+            </form>
+          </>
+        )
+      }
+      {
+        feeds != null && feeds.length === 0 && (
+          <>
+            <p>Unable to find any feeds at this address. Please try again.</p>
+          </>
+        )
+      }
+    </div>
+  </section>
+</Layout>

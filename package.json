@@ -1,0 +1,33 @@
+{
+  "name": "rss-demo",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "node -r dotenv/config ./dist/server/entry.mjs",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/node": "^8.3.4",
+    "@vercel/postgres": "^0.10.0",
+    "astro": "^4.16.8",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.36.0",
+    "milligram": "^1.4.1",
+    "openai": "^4.71.0",
+    "purecss": "^3.0.0",
+    "typescript": "^5.6.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.5.9",
+    "@types/node": "^22.8.7",
+    "drizzle-kit": "^0.27.1"
+  }
+}
